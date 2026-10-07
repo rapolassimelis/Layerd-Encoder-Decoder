@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="A small notebook for scrambling text through classic ciphers, chained one after another, entirely in your browser.">
+<title>Cipher Notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #faf6ec;
+    --paper: #e7ddc3;
+    --paper-dark: #d9cca6;
+    --line: #b7a97e;
+    --brass: #8c5a2b;
+    --brass-dark: #6e4620;
+    --bg: #1c1d1b;
+    --red: #9c3b2e;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: radial-gradient(ellipse at top, #2a2a24, var(--bg) 70%);
+    color: var(--ink);
+    font-family: 'Fraunces', serif;
+    padding: env(safe-area-inset-top,0) 18px env(safe-area-inset-bottom,0);
+    min-height: 100%;
+  }
+  .page { max-width: 620px; margin: 0 auto; padding: 40px 0 60px; }
+  header { margin-bottom: 28px; }
+  h1 { font-size: 2.1rem; font-weight: 600; font-style: italic; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lede { color: #b9b4a4; font-size: 0.98rem; line-height: 1.5; max-width: 46ch; margin: 0; }
+  .sheet {
+    background: var(--paper); color: #2c2518; border-radius: 2px; padding: 26px 24px; margin-top: 22px;
+    position: relative; box-shadow: 0 1px 0 rgba(0,0,0,.4), 0 18px 34px -20px rgba(0,0,0,.6);
+  }
+  .sheet::before { content: ''; position: absolute; left: 46px; top: 0; bottom: 0; width: 1px; background: rgba(156,59,46,0.35); }
+  .sheet-inner { margin-left: 30px; }
+  .field-label { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--brass-dark); letter-spacing: 0.02em; margin-bottom: 8px; display: block; }
+  textarea {
+    width: 100%; min-height: 84px; background: transparent; border: none; border-bottom: 1px dashed var(--line);
+    color: #2c2518; font-family: 'Fraunces', serif; font-size: 1.02rem; padding: 2px 0 10px; resize: vertical; line-height: 1.5;
+  }
+  textarea:focus { outline: none; border-bottom-color: var(--brass); }
+  textarea::placeholder { color: #8c8166; font-style: italic; }
+  .mode-row { display: flex; gap: 18px; margin: 18px 0 2px; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+  .mode-row button { background: none; border: none; color: #8c8166; cursor: pointer; padding: 4px 0; border-bottom: 2px solid transparent; font-family: inherit; font-size: inherit; }
+  .mode-row button.active { color: var(--brass-dark); border-bottom-color: var(--brass); }
+  .scheme-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
+  .scheme-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; background: var(--paper-dark);
+    border: 1px solid rgba(0,0,0,.12); color: #4a3f28; padding: 6px 11px; border-radius: 3px; cursor: pointer; transition: transform .08s ease;
+  }
+  .scheme-btn:hover:not(:disabled) { border-color: var(--brass); color: var(--brass-dark); }
+  .scheme-btn:active:not(:disabled) { transform: scale(0.96); }
+  .scheme-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .chain { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; border-top: 1px dashed var(--line); padding-top: 12px; min-height: 20px; }
+  .chain-empty { color: #8c8166; font-style: italic; font-family: 'Fraunces', serif; }
+  .chain-step { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+  .chain-step .num { color: var(--brass); width: 1.4em; }
+  .chain-step .name { flex: 1; }
+  .chain-step button { background: none; border: none; color: #a89c7b; cursor: pointer; font-family: inherit; font-size: 0.9em; }
+  .chain-step button:hover { color: var(--red); }
+  .size-note { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); color: #8c8166; }
+  .size-note.caution { color: #8a5a1f; }
+  .size-note.danger { color: var(--red); }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  button.stamp { font-family: 'Fraunces', serif; font-weight: 600; font-size: 0.92rem; background: var(--brass); color: var(--paper); border: none; padding: 9px 20px; border-radius: 3px; cursor: pointer; }
+  button.stamp:hover { background: var(--brass-dark); }
+  button.ghost { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; background: none; border: 1px solid rgba(0,0,0,.2); color: #4a3f28; padding: 8px 14px; border-radius: 3px; cursor: pointer; }
+  button.ghost:hover { border-color: var(--brass); color: var(--brass-dark); }
+  .error-note { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--red); margin-top: 10px; }
+  .output-sheet { margin-top: 18px; }
+  .output-box { font-family: 'JetBrains Mono', monospace; font-size: 0.86rem; white-space: pre-wrap; word-break: break-all; line-height: 1.6; min-height: 40px; color: #2c2518; }
+  .output-box.empty { color: #8c8166; font-family: 'Fraunces', serif; font-style: italic; }
+  .punch { animation: punch .25s ease; }
+  @keyframes punch { 0% { transform: scale(1); } 40% { transform: scale(1.015); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .punch { animation: none; } }
+  .log { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #8c8166; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .log div { padding: 1px 0; }
+  footer { margin-top: 28px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #6b6a60; text-align: center; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Cipher Notebook</h1>
+    <p class="lede">Pick a few classic ciphers, stack them in whatever order you like, and watch your text get scrambled one layer at a time. Everything happens on your machine — nothing is sent anywhere.</p>
+  </header>
+
+  <div class="sheet">
+    <div class="sheet-inner">
+      <span class="field-label">your text</span>
+      <textarea id="inputText" placeholder="Write something here..."></textarea>
+
+      <div class="mode-row">
+        <button id="modeEncode" class="active">encode</button>
+        <button id="modeDecode">decode</button>
+      </div>
+
+      <span class="field-label" style="margin-top:16px;">build the chain (up to 12 steps, in order)</span>
+      <div class="scheme-grid" id="schemeButtons"></div>
+
+      <div class="chain" id="chainList"></div>
+      <div class="size-note" id="sizeNote"></div>
+
+      <div class="actions">
+        <button class="stamp" id="runBtn">Run the chain</button>
+        <button class="ghost" id="clearBtn">Clear chain</button>
+      </div>
+      <div class="error-note" id="errorNote"></div>
+    </div>
+  </div>
+
+  <div class="sheet output-sheet">
+    <div class="sheet-inner">
+      <span class="field-label">result</span>
+      <div class="output-box empty" id="outputBox">— nothing yet —</div>
+      <div class="actions">
+        <button class="ghost" id="copyBtn">Copy</button>
+        <button class="ghost" id="useBtn">Use as new input</button>
+      </div>
+      <div class="log" id="stepsLog"></div>
+    </div>
+  </div>
+
+  <footer>ten ciphers · zero network requests · your browser only</footer>
+</div>
+
+<script>
+const schemes = [
+  { id: 'base64', name: 'Base64' }, { id: 'hex', name: 'Hex' }, { id: 'binary', name: 'Binary' },
+  { id: 'rot13', name: 'ROT13' }, { id: 'url', name: 'URL' }, { id: 'morse', name: 'Morse' },
+  { id: 'ascii85', name: 'ASCII85' }, { id: 'reverse', name: 'Reverse' },
+  { id: 'caesar3', name: 'Caesar (3)' }, { id: 'unicode', name: 'Unicode' }
+];
+let chain = [], mode = 'encode';
+const MAX_CHAIN = 12, HARD_CAP = 1500000;
+const expand = { base64:1.37, hex:3, binary:9, rot13:1, url:1.3, morse:3.2, ascii85:1.25, reverse:1, caesar3:1, unicode:6 };
+
+function toBase64(s){ return btoa(unescape(encodeURIComponent(s))); }
+function fromBase64(s){ return decodeURIComponent(escape(atob(s))); }
+function toHex(s){ return Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join(' '); }
+function fromHex(s){ return new TextDecoder().decode(new Uint8Array(s.trim().split(/\s+/).map(h=>parseInt(h,16)))); }
+function toBinary(s){ return Array.from(new TextEncoder().encode(s)).map(b=>b.toString(2).padStart(8,'0')).join(' '); }
+function fromBinary(s){ return new TextDecoder().decode(new Uint8Array(s.trim().split(/\s+/).map(b=>parseInt(b,2)))); }
+function rot13(s){ return s.replace(/[a-zA-Z]/g,c=>{const b=c<='Z'?65:97;return String.fromCharCode((c.charCodeAt(0)-b+13)%26+b);}); }
+function urlEnc(s){ return encodeURIComponent(s); }
+function urlDec(s){ return decodeURIComponent(s); }
+const morseMap = {'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---','K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-','U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',' ':'/'};
+const rMorse = Object.fromEntries(Object.entries(morseMap).map(([k,v])=>[v,k]));
+function toMorse(s){ return s.toUpperCase().split('').map(c=>morseMap[c]!==undefined?morseMap[c]:c).join(' '); }
+function fromMorse(s){ return s.trim().split(' ').map(c=>rMorse[c]!==undefined?rMorse[c]:c).join(''); }
+function toA85(s){ const b=new TextEncoder().encode(s); let out='',i=0; while(i<b.length){ let c=[0,0,0,0],n=Math.min(4,b.length-i); for(let j=0;j<n;j++)c[j]=b[i+j]; let num=(c[0]*16777216+c[1]*65536+c[2]*256+c[3])>>>0,ch=''; for(let k=0;k<5;k++){ ch=String.fromCharCode(33+(num%85))+ch; num=Math.floor(num/85); } out+=ch.slice(0,n+1); i+=4; } return out; }
+function fromA85(s){ s=s.trim(); const out=[]; let i=0; while(i<s.length){ let n=Math.min(5,s.length-i),ch=s.slice(i,i+5).padEnd(5,'u'),num=0; for(let k=0;k<5;k++)num=num*85+(ch.charCodeAt(k)-33); num=num>>>0; out.push(...[(num>>>24)&0xFF,(num>>>16)&0xFF,(num>>>8)&0xFF,num&0xFF].slice(0,n-1)); i+=5; } return new TextDecoder().decode(new Uint8Array(out)); }
+function revStr(s){ return s.split('').reverse().join(''); }
+function caesar(s,n){ return s.replace(/[a-zA-Z]/g,c=>{const b=c<='Z'?65:97;return String.fromCharCode(((c.charCodeAt(0)-b+n)%26+26)%26+b);}); }
+function toUni(s){ return s.split('').map(c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')).join(''); }
+function fromUni(s){ return s.replace(/\\u([0-9a-fA-F]{4})/g,(m,h)=>String.fromCharCode(parseInt(h,16))); }
+
+const enc = { base64:toBase64, hex:toHex, binary:toBinary, rot13:rot13, url:urlEnc, morse:toMorse, ascii85:toA85, reverse:revStr, caesar3:s=>caesar(s,3), unicode:toUni };
+const dec = { base64:fromBase64, hex:fromHex, binary:fromBinary, rot13:rot13, url:urlDec, morse:fromMorse, ascii85:fromA85, reverse:revStr, caesar3:s=>caesar(s,-3), unicode:fromUni };
+
+const $ = id => document.getElementById(id);
+const inputText = $('inputText'), schemeButtons = $('schemeButtons'), chainList = $('chainList'),
+      sizeNote = $('sizeNote'), outputBox = $('outputBox'), stepsLog = $('stepsLog'), errorNote = $('errorNote');
+
+function renderSchemes() {
+  schemeButtons.innerHTML = '';
+  schemes.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'scheme-btn'; b.textContent = s.name;
+    b.disabled = chain.length >= MAX_CHAIN;
+    b.onclick = () => { if (chain.length < MAX_CHAIN) { chain.push(s.id); render(); } };
+    schemeButtons.appendChild(b);
+  });
+}
+
+function render() {
+  renderSchemes();
+  chainList.innerHTML = '';
+  if (chain.length === 0) {
+    chainList.innerHTML = '<div class="chain-empty">no steps yet — tap a cipher above</div>';
+  } else {
+    chain.forEach((id, i) => {
+      const s = schemes.find(x => x.id === id);
+      const row = document.createElement('div');
+      row.className = 'chain-step';
+      row.innerHTML = `<span class="num">${i+1}.</span><span class="name">${s.name}</span>`;
+      const rm = document.createElement('button');
+      rm.textContent = 'remove';
+      rm.onclick = () => { chain.splice(i, 1); render(); };
+      row.appendChild(rm);
+      chainList.appendChild(row);
+    });
+  }
+  updateSize();
+}
+
+function updateSize() {
+  const start = Math.max(inputText.value.length, 1);
+  let est = start;
+  chain.forEach(id => est *= (expand[id] || 1));
+  if (chain.length === 0) { sizeNote.textContent = ''; sizeNote.className = 'size-note'; return; }
+  const readable = est > 1000000 ? (est/1000000).toFixed(1)+'M characters' : est > 1000 ? Math.round(est/1000)+'K characters' : Math.round(est)+' characters';
+  if (est > HARD_CAP) {
+    sizeNote.className = 'size-note danger';
+    sizeNote.textContent = `this would come out to roughly ${readable} — likely to choke the page. trim a step or two, especially Binary, Hex, Morse, or Unicode.`;
+  } else if (est > 50000) {
+    sizeNote.className = 'size-note caution';
+    sizeNote.textContent = `roughly ${readable} expected — should still run, just might lag a moment.`;
+  } else {
+    sizeNote.className = 'size-note';
+    sizeNote.textContent = `roughly ${readable} expected.`;
+  }
+}
+
+function setMode(m) {
+  mode = m;
+  $('modeEncode').classList.toggle('active', m === 'encode');
+  $('modeDecode').classList.toggle('active', m === 'decode');
+}
+
+function run() {
+  errorNote.textContent = ''; stepsLog.innerHTML = '';
+  let v = inputText.value;
+  if (!v) { errorNote.textContent = 'write something first.'; return; }
+  if (chain.length === 0) { errorNote.textContent = 'add at least one cipher to the chain.'; return; }
+  const steps = mode === 'encode' ? chain : [...chain].reverse();
+  const fn = mode === 'encode' ? enc : dec;
+  const log = [];
+  try {
+    for (const id of steps) {
+      const s = schemes.find(x => x.id === id);
+      v = fn[id](v);
+      if (v.length > HARD_CAP) throw new Error(`stopped after ${s.name} — result hit ${(v.length/1000000).toFixed(1)}M characters. remove a step and try again.`);
+      log.push(`${mode === 'encode' ? 'encoded' : 'decoded'} with ${s.name} — ${v.length.toLocaleString()} chars`);
+    }
+    outputBox.textContent = v;
+    outputBox.classList.remove('empty');
+    outputBox.classList.remove('punch'); void outputBox.offsetWidth; outputBox.classList.add('punch');
+    stepsLog.innerHTML = log.map(l => `<div>${l}</div>`).join('');
+  } catch (e) {
+    errorNote.textContent = e.message;
+    outputBox.textContent = '— nothing yet —';
+    outputBox.classList.add('empty');
+    stepsLog.innerHTML = log.map(l => `<div>${l}</div>`).join('');
+  }
+}
+
+$('modeEncode').onclick = () => setMode('encode');
+$('modeDecode').onclick = () => setMode('decode');
+$('runBtn').onclick = run;
+$('clearBtn').onclick = () => { chain = []; render(); };
+$('copyBtn').onclick = () => {
+  const t = outputBox.textContent;
+  if (!t || outputBox.classList.contains('empty')) return;
+  navigator.clipboard.writeText(t).catch(()=>{});
+};
+$('useBtn').onclick = () => {
+  const t = outputBox.textContent;
+  if (!t || outputBox.classList.contains('empty')) return;
+  inputText.value = t; updateSize();
+};
+inputText.addEventListener('input', updateSize);
+
+render();
+</script>
+</body>
+</html>
